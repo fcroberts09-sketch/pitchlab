@@ -5,6 +5,7 @@ import type { AnalysisResult, AnalyzeResponse } from "@/types/analysis";
 import { extractFrames } from "@/lib/frame-extractor";
 import { UploadZone } from "./UploadZone";
 import { AnalysisResults } from "./AnalysisResults";
+import { ApiKeyModal, useApiKey } from "./ApiKeyModal";
 
 function gradeColor(grade: string | undefined): string {
   if (!grade) return "text-slate-400";
@@ -21,6 +22,8 @@ export function PitchingCoach() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const { apiKey } = useApiKey();
 
   const handleReset = useCallback(() => {
     if (videoUrl) URL.revokeObjectURL(videoUrl);
@@ -34,10 +37,11 @@ export function PitchingCoach() {
   const analyzeFrames = useCallback(async (frameData: string[]) => {
     setProgress("Analyzing pitching mechanics with AI\u2026");
 
+    const storedKey = localStorage.getItem("pitchlab_api_key") || "";
     const response = await fetch("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ frames: frameData }),
+      body: JSON.stringify({ frames: frameData, clientApiKey: storedKey || undefined }),
     });
 
     const result: AnalyzeResponse = await response.json();
@@ -88,6 +92,8 @@ export function PitchingCoach() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
+      {showKeyModal && <ApiKeyModal onClose={() => setShowKeyModal(false)} />}
+
       {/* Header */}
       <header className="border-b border-slate-800 px-4 sm:px-6 py-4 bg-gradient-to-b from-slate-900 to-slate-950">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
@@ -104,20 +110,36 @@ export function PitchingCoach() {
             </div>
           </div>
 
-          {analysis && (
-            <div className="ml-auto text-center shrink-0">
-              <div
-                className={`text-3xl font-extrabold font-mono leading-none ${gradeColor(
-                  analysis.overall_grade
-                )}`}
-              >
-                {analysis.overall_grade}
+          <div className="ml-auto flex items-center gap-3 shrink-0">
+            {analysis && (
+              <div className="text-center">
+                <div
+                  className={`text-3xl font-extrabold font-mono leading-none ${gradeColor(
+                    analysis.overall_grade
+                  )}`}
+                >
+                  {analysis.overall_grade}
+                </div>
+                <div className="text-[9px] text-slate-500 uppercase tracking-widest">
+                  Overall
+                </div>
               </div>
-              <div className="text-[9px] text-slate-500 uppercase tracking-widest">
-                Overall
-              </div>
-            </div>
-          )}
+            )}
+
+            <button
+              onClick={() => setShowKeyModal(true)}
+              title={apiKey ? "API key set" : "Set API key"}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors relative"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                <path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>
+              </svg>
+              {apiKey && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 

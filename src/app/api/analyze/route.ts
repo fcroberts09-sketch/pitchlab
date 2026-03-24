@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { frames } = body as { frames: unknown };
+    const { frames, clientApiKey } = body as { frames: unknown; clientApiKey?: unknown };
     const frameValidation = validateFrames(frames);
 
     if (!frameValidation.valid) {
@@ -122,15 +122,22 @@ export async function POST(request: NextRequest) {
 
     const validFrames = frames as string[];
 
-    // --- Get API key ---
+    // --- Resolve API key: client-provided takes priority over server env var ---
     let apiKey: string;
-    try {
-      apiKey = getApiKey();
-    } catch {
-      return NextResponse.json(
-        { success: false, error: "Server configuration error. API key not set." },
-        { status: 500 }
-      );
+    if (clientApiKey && typeof clientApiKey === "string" && clientApiKey.startsWith("sk-ant-")) {
+      apiKey = clientApiKey;
+    } else if (!isMockMode()) {
+      try {
+        apiKey = getApiKey();
+      } catch {
+        return NextResponse.json(
+          { success: false, error: "No API key configured. Click the settings icon to add your Anthropic API key." },
+          { status: 500 }
+        );
+      }
+    } else {
+      // isMockMode already handled above, this path won't be reached
+      apiKey = "";
     }
 
     // --- Build Claude API request ---
