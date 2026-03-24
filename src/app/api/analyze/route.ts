@@ -3,6 +3,42 @@ import { SYSTEM_PROMPT } from "@/lib/prompts";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateFrames, sanitizeAnalysis } from "@/lib/validation";
 
+const MOCK_ANALYSIS = {
+  overall_grade: "B+",
+  overall_summary: "Solid pitching mechanics with good rhythm and arm action. The delivery shows natural athleticism with some areas to refine for improved velocity and command.",
+  pitcher_age_note: "Mechanics are age-appropriate. Focus on consistency and building good habits.",
+  phases: [
+    { name: "Stance & Grip", grade: "A", status: "good" as const, observation: "Athletic stance with balanced weight distribution. Grip looks comfortable and natural.", key_issue: null },
+    { name: "Wind-Up", grade: "B+", status: "good" as const, observation: "Smooth tempo with good momentum toward the plate. Slight early shoulder rotation detected.", key_issue: "Minor early shoulder rotation" },
+    { name: "Stride", grade: "B", status: "warning" as const, observation: "Stride length is slightly short, limiting hip-to-shoulder separation and reducing potential velocity.", key_issue: "Stride length could be longer" },
+    { name: "Arm Action", grade: "A-", status: "good" as const, observation: "Clean arm path with good elbow height at foot strike. Wrist stays behind the ball well.", key_issue: null },
+    { name: "Hip Rotation", grade: "B", status: "warning" as const, observation: "Hips are firing but not fully clearing before shoulder rotation begins. More separation needed.", key_issue: "Insufficient hip-shoulder separation" },
+    { name: "Release Point", grade: "B+", status: "good" as const, observation: "Consistent release point out front. Slight drop in release height on some pitches.", key_issue: "Minor release point inconsistency" },
+    { name: "Follow-Through", grade: "A-", status: "good" as const, observation: "Good deceleration with arm finishing across the body. Athletic fielding position maintained.", key_issue: null },
+  ],
+  top_issues: [
+    { issue: "Hip-Shoulder Separation", description: "Shoulders are rotating too early, reducing the elastic energy that transfers from the lower half to the arm.", impact: "Can cost 3-5 mph and reduce pitch movement" },
+    { issue: "Stride Length", description: "Stride is approximately 80% of height. Optimal is 85-100% for maximum power generation.", impact: "Limits ground force and hip drive efficiency" },
+    { issue: "Early Shoulder Rotation", description: "Front shoulder is opening slightly before front foot plant, causing inconsistent command.", impact: "Leads to elevated pitches and reduced arm-side movement" },
+  ],
+  drills: [
+    { name: "Hip Hinge & Separation Drill", targets: "Hip-shoulder separation", reps: "3 sets of 10 reps", how_to: "Stand with feet shoulder-width apart. Practice rotating hips fully while keeping shoulders closed. Use a resistance band around the waist for feedback.", priority: "high" as const },
+    { name: "Stride Length Markers", targets: "Stride length and direction", reps: "20 reps per session", how_to: "Place a tape mark at 90% of your height from the rubber. Practice striding to the mark with balance and control.", priority: "high" as const },
+    { name: "Towel Drill", targets: "Arm path and release consistency", reps: "3 sets of 15 reps", how_to: "Hold a towel in the throwing hand. Go through full delivery and snap the towel to hit a target on the wall at release point height.", priority: "medium" as const },
+    { name: "Balance Point Hold", targets: "Leg lift and balance", reps: "10 reps, hold 3 seconds each", how_to: "Lift leg to balance point and hold for 3 seconds before beginning the stride. Builds stability and timing.", priority: "medium" as const },
+  ],
+  weekly_plan: [
+    { day: "Monday", focus: "Hip Separation", activities: ["Hip Hinge Drill – 3x10", "Medicine ball rotational throws – 3x8", "Light catch focusing on hip fire"] },
+    { day: "Tuesday", focus: "Rest & Recovery", activities: ["Light stretching", "Band work for shoulder maintenance", "Video review of mechanics"] },
+    { day: "Wednesday", focus: "Stride & Balance", activities: ["Stride Length Markers – 20 reps", "Balance Point Hold – 10 reps", "Flat ground bullpen (30 pitches, focus on stride)"] },
+    { day: "Thursday", focus: "Arm Action", activities: ["Towel Drill – 3x15", "Long toss (build to 90 feet)", "Wrist snap drills"] },
+    { day: "Friday", focus: "Full Integration", activities: ["Full bullpen session (45 pitches)", "Film review with coach", "Identify 1 feel cue from session"] },
+    { day: "Saturday", focus: "Competition or Scrimmage", activities: ["Apply mechanics in game setting", "Focus on one key cue per inning", "Post-outing notes"] },
+    { day: "Sunday", focus: "Rest", activities: ["Full rest or light walk", "Mental visualization of good mechanics", "Prep for next week"] },
+  ],
+  encouragement: "Great foundation to build on! Your arm action and follow-through are real strengths. With focused work on hip separation and stride length, you have the tools to add velocity and sharpen your command. Keep grinding!",
+};
+
 // Validate environment on first request
 function getApiKey(): string {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -10,6 +46,11 @@ function getApiKey(): string {
     throw new Error("ANTHROPIC_API_KEY is not configured");
   }
   return key;
+}
+
+function isMockMode(): boolean {
+  const key = process.env.ANTHROPIC_API_KEY;
+  return !key || key.trim() === "" || key === "mock";
 }
 
 function getClientIP(request: NextRequest): string {
@@ -43,6 +84,12 @@ export async function POST(request: NextRequest) {
           },
         }
       );
+    }
+
+    // --- Mock mode (no API key needed for local dev) ---
+    if (isMockMode()) {
+      await new Promise((r) => setTimeout(r, 1500)); // simulate processing delay
+      return NextResponse.json({ success: true, data: MOCK_ANALYSIS });
     }
 
     // --- Parse and validate request body ---
