@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SYSTEM_PROMPT } from "@/lib/prompts";
+import { SYSTEM_PROMPT, buildValidatorPrompt } from "@/lib/prompts";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { validateFrames, sanitizeAnalysis } from "@/lib/validation";
+import { validateFrames, sanitizeAnalysis, mergeValidation } from "@/lib/validation";
 
 const MOCK_ANALYSIS = {
   overall_grade: "B+",
@@ -252,9 +252,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // --- Reject non-pitching uploads ---
+    if (analysis.is_valid_upload === false) {
+      const reason = analysis.invalid_reason || "This doesn't appear to be a baseball pitching video.";
+      return NextResponse.json(
+        { success: false, error: `Invalid upload: ${reason} Please upload a video of a baseball pitcher.` },
+        { status: 400 }
+      );
+    }
+
+    // --- Dual-pass validator: second Claude call reviews analysis against same frames ---
+    let finalAnalysis = analysis;
+    try {
+      const phaseSummary = analysis.phases
+        .map((p) => `${p.name}: ${p.observation}${p.key_issue ? ` (key issue: ${p.key_issue})` : ""}`)
+        .join("\n");
+
+      const validatorContent = [
+        ...imageContent.filter((c) => c.type === "image"),
+        {
+          type: "text" as const,
+          text: buildValidatorPrompt(phaseSummary),
+          source: undefined as never,
+        },
+      ];
+
+      const validatorResponse = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 1200,
+          messages: [{ role: "user", content: validatorContent }],
+        }),
+      });
+
+      if (validatorResponse.ok) {
+        const vData = await validatorResponse.json();
+        const vText = (vData.content as { type: string; text: string }[])
+          ?.filter((b) => b.type === "text")
+          .map((b) => b.text)
+          .join("")
+          .replace(/```json\s*|```\s*/g, "")
+          .trim();
+        if (vText) {
+          const vParsed = JSON.parse(vText);
+          finalAnalysis = mergeValidation(analysis, vParsed);
+        }
+      }
+    } catch {
+      // Validator failure is non-blocking — return the original analysis
+    }
+
     // --- Return success ---
     return NextResponse.json(
-      { success: true, data: analysis },
+      { success: true, data: finalAnalysis },
       {
         headers: {
           "X-RateLimit-Remaining": String(rateCheck.remaining),

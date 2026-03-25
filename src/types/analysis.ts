@@ -2,8 +2,10 @@ export interface Phase {
   name: string;
   grade: string;
   status: "good" | "warning" | "needs_work";
+  confidence: "high" | "medium" | "low";
   observation: string;
   key_issue: string | null;
+  validation_status?: "confirmed" | "plausible" | "unsupported";
 }
 
 export interface Issue {
@@ -27,6 +29,8 @@ export interface DayPlan {
 }
 
 export interface AnalysisResult {
+  is_valid_upload?: boolean;
+  invalid_reason?: string | null;
   overall_grade: string;
   overall_summary: string;
   pitcher_age_note: string;
@@ -35,6 +39,8 @@ export interface AnalysisResult {
   drills: Drill[];
   weekly_plan: DayPlan[];
   encouragement: string;
+  validation_confidence?: "high" | "medium" | "low";
+  validation_flags?: string[];
 }
 
 export interface AnalyzeRequest {
