@@ -2,8 +2,10 @@ export interface Phase {
   name: string;
   grade: string;
   status: "good" | "warning" | "needs_work";
+  confidence: "high" | "medium" | "low";
   observation: string;
   key_issue: string | null;
+  validation_status?: "confirmed" | "plausible" | "unsupported";
 }
 
 export interface Issue {
@@ -37,6 +39,8 @@ export interface AnalysisResult {
   drills: Drill[];
   weekly_plan: DayPlan[];
   encouragement: string;
+  validation_confidence?: "high" | "medium" | "low";
+  validation_flags?: string[];
 }
 
 export interface AnalyzeRequest {

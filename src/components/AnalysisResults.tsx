@@ -27,6 +27,26 @@ export function AnalysisResults({ analysis }: AnalysisResultsProps) {
 
   return (
     <div>
+      {/* Validation confidence banner */}
+      {analysis.validation_confidence === "low" && (
+        <div className="bg-red-950/30 border border-red-900/40 rounded-lg px-4 py-3 mb-4 text-xs text-red-400">
+          <span className="font-bold">Low video confidence:</span> The AI had difficulty clearly seeing several phases in this footage. Results may be less reliable — consider re-filming from a side angle with better lighting.
+          {analysis.validation_flags && analysis.validation_flags.length > 0 && (
+            <ul className="mt-1.5 list-disc list-inside text-red-500/80">
+              {analysis.validation_flags.map((flag, i) => <li key={i}>{flag}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+      {analysis.validation_confidence === "medium" && analysis.validation_flags && analysis.validation_flags.length > 0 && (
+        <div className="bg-amber-950/20 border border-amber-900/30 rounded-lg px-4 py-3 mb-4 text-xs text-amber-400/80">
+          <span className="font-bold">Note:</span> Some observations could not be fully confirmed from the footage.
+          <ul className="mt-1 list-disc list-inside">
+            {analysis.validation_flags.map((flag, i) => <li key={i}>{flag}</li>)}
+          </ul>
+        </div>
+      )}
+
       {/* Summary Card */}
       <div className="bg-gradient-to-br from-slate-900/80 to-blue-950/30 border border-blue-900/40 rounded-xl p-5 mb-5">
         <p className="text-slate-400 text-sm leading-relaxed m-0">

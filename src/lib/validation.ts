@@ -104,6 +104,7 @@ export function sanitizeAnalysis(raw: unknown): AnalysisResult | null {
   if (!Array.isArray(data.phases) || data.phases.length === 0) return null;
 
   const validStatuses = ["good", "warning", "needs_work"];
+  const validConfidences = ["high", "medium", "low"];
   const phases: Phase[] = [];
 
   for (const p of data.phases) {
@@ -119,6 +120,9 @@ export function sanitizeAnalysis(raw: unknown): AnalysisResult | null {
       name: String(phase.name).slice(0, 200),
       grade: String(phase.grade).slice(0, 5),
       status: phase.status as Phase["status"],
+      confidence: validConfidences.includes(String(phase.confidence))
+        ? (String(phase.confidence) as Phase["confidence"])
+        : "medium",
       observation: String(phase.observation).slice(0, 500),
       key_issue: phase.key_issue != null ? String(phase.key_issue).slice(0, 300) : null,
     });
@@ -192,5 +196,43 @@ export function sanitizeAnalysis(raw: unknown): AnalysisResult | null {
     drills,
     weekly_plan: weeklyPlan,
     encouragement: String(data.encouragement || "").slice(0, 500),
+  };
+}
+
+/**
+ * Merge dual-pass validator results into an existing AnalysisResult.
+ * Non-destructive: if anything is malformed the original analysis is returned unchanged.
+ */
+export function mergeValidation(analysis: AnalysisResult, raw: unknown): AnalysisResult {
+  if (!raw || typeof raw !== "object") return analysis;
+  const v = raw as Record<string, unknown>;
+
+  const validVStatuses = ["confirmed", "plausible", "unsupported"];
+  const validConfidences = ["high", "medium", "low"];
+
+  // Build a lookup from phase name (lowercased) → validation status
+  const statusMap = new Map<string, Phase["validation_status"]>();
+  if (Array.isArray(v.phase_validations)) {
+    for (const pv of v.phase_validations) {
+      if (!pv || typeof pv !== "object") continue;
+      const p = pv as Record<string, unknown>;
+      if (typeof p.name === "string" && validVStatuses.includes(String(p.status))) {
+        statusMap.set(p.name.toLowerCase(), String(p.status) as Phase["validation_status"]);
+      }
+    }
+  }
+
+  return {
+    ...analysis,
+    phases: analysis.phases.map((phase) => ({
+      ...phase,
+      validation_status: statusMap.get(phase.name.toLowerCase()) ?? phase.validation_status,
+    })),
+    validation_confidence: validConfidences.includes(String(v.overall_confidence))
+      ? (String(v.overall_confidence) as AnalysisResult["validation_confidence"])
+      : undefined,
+    validation_flags: Array.isArray(v.flags)
+      ? v.flags.filter((f): f is string => typeof f === "string").map((f) => f.slice(0, 300))
+      : [],
   };
 }
