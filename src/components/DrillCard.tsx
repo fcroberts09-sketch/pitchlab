@@ -55,7 +55,29 @@ export function DrillCard({ drill }: DrillCardProps) {
       {open && (
         <div className="mt-3 pt-3 border-t border-slate-800">
           <p className="text-slate-400 text-xs leading-relaxed mb-2">{drill.how_to}</p>
-          <span className="text-blue-400 text-xs font-mono">Reps: {drill.reps}</span>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-blue-400 text-xs font-mono">Reps: {drill.reps}</span>
+            {drill.video_url && (
+              <a
+                href={drill.video_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 rounded-md px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 transition-colors no-underline"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="shrink-0"
+                >
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.016 3.016 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.016 3.016 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                </svg>
+                {drill.video_label || "Watch Demo"}
+              </a>
+            )}
+          </div>
         </div>
       )}
     </div>
