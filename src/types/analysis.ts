@@ -20,6 +20,8 @@ export interface Drill {
   reps: string;
   how_to: string;
   priority: "high" | "medium" | "low";
+  video_url?: string;
+  video_label?: string;
 }
 
 export interface DayPlan {

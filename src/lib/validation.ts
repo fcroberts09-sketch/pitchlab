@@ -1,4 +1,5 @@
 import type { AnalysisResult, Phase, Issue, Drill, DayPlan } from "@/types/analysis";
+import { findDrillVideo } from "@/lib/drill-videos";
 
 /** Maximum number of frames accepted */
 export const MAX_FRAMES = 12;
@@ -155,14 +156,18 @@ export function sanitizeAnalysis(raw: unknown): AnalysisResult | null {
       const drill = d as Record<string, unknown>;
       if (typeof drill.name !== "string") continue;
 
+      const drillName = String(drill.name).slice(0, 200);
+      const video = findDrillVideo(drillName);
       drills.push({
-        name: String(drill.name).slice(0, 200),
+        name: drillName,
         targets: String(drill.targets || "").slice(0, 300),
         reps: String(drill.reps || "").slice(0, 200),
         how_to: String(drill.how_to || "").slice(0, 1000),
         priority: validPriorities.includes(String(drill.priority))
           ? (String(drill.priority) as Drill["priority"])
           : "medium",
+        video_url: video?.url,
+        video_label: video?.label,
       });
     }
   }
